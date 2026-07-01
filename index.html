@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Health Self-Check</title>
+</head>
+
+<body style="background-color:#33cc33; color:#404040; font-family:Arial;">
+
+    <div id="precheck">
+        <form id="bmiForm">
+            <div style="width:800px; margin:auto; background:#f2f2f2; padding:25px; border-radius:15px; margin-top:50px;">
+                <h1 style="text-align:center;">Health Self-Check Kiosk</h1>
+
+                <p style="text-align:center;"></p>
+
+                <label for="name"><h3>Name</h3></label>
+                <input type="text" id="name" name="name" placeholder="Enter your name" style="width:300px; padding:18px;" required>
+                
+                <br>
+                <label for="age"><h3>Age</h3></label>
+                <input type="number" id="age" name="age" min="1" max="120" placeholder="Enter your Age" style="width:300px; padding:18px;" required>
+                
+                <br>
+                <label><h3>Sex</h3></label>
+                <input type="radio" id="male" name="sex" value="Male">
+                <label for="male">Male</label>
+                <input type="radio" id="female" name="sex" value="Female">
+                <label for="female">Female</label>
+               
+                <br><br>
+                <label for="weight"><h3>Weight</h3></label>
+                <input type="number" id="weight" name="weight" placeholder="Enter your weight (kg)" style="width:300px; padding:18px;" required>
+                
+                <br>
+                <label for="height"><h3>Height</h3></label>
+                <input type="number" id="height" name="height" placeholder="Enter your height (cm)" style="width:300px; padding:18px;" required>
+                
+                <br>
+                <h3>Check my BMI</h3>
+            
+                <button type="submit" id="submitBtn" style="width:300px; padding:20px; background:#3b82f6; color:white; border:none; cursor:pointer;">
+                    Submit Precheck
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <div id="results" style="display:none; width:800px; margin:auto; background:#f2f2f2; padding:25px; border-radius:15px; margin-top:50px; text-align:center;">
+        <h1>Health Self-Check Result</h1>
+        <hr>
+        
+        <h2 id="resultName"></h2>
+        <h1 id="resultBMI" style="font-size:70px; margin:20px;"></h1>
+        <h2 id="resultCategory"></h2>
+        <p id="resultMessage" style="font-size:20px;"></p>
+        
+        <br>
+        <button onclick="newAssessment()" style="padding:15px 25px; background:#3b82f6; color:white; border:none; border-radius:8px; cursor:pointer;">
+            New Assessment
+        </button>
+    </div>
+
+    <script>
+        document.getElementById("bmiForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById("name").value.trim();
+            const age = Number(document.getElementById("age").value);
+            const weight = Number(document.getElementById("weight").value);
+            const height = Number(document.getElementById("height").value);
+            const sex = document.querySelector('input[name="sex"]:checked');
+            
+            // Validation Checks
+            let fields = [
+                document.getElementById("name"),
+                document.getElementById("age"),
+                document.getElementById("weight"),
+                document.getElementById("height")
+            ];
+
+            for (let i = 0; i < fields.length; i++) {
+                if (fields[i].value.trim() === "") {
+                    alert("Please complete all required fields.");
+                    return;
+                }
+            }
+
+            if (!/^[A-Za-z\s]+$/.test(name)) {
+                alert("Name should only contain letters.");
+                return;
+            }
+
+            if (sex == null) {
+                alert("Please select your sex.");
+                return;
+            }
+
+            if (weight < 20 || weight > 500) {
+                alert("Please enter a realistic weight.");
+                return;
+            }
+
+            if (height < 50 || height > 250) {
+                alert("Please enter a realistic height.");
+                return;
+            }
+
+            // Calculations
+            const heightM = height / 100;
+            const bmi = weight / (heightM * heightM);
+
+            let category;
+            let message;
+            let color;
+
+            switch (true) {
+                case bmi < 18.5:
+                    category = "Underweight";
+                    message = "Consider a balanced, calorie-sufficient diet.";
+                    color = "#5DADE2";
+                    break;
+                case bmi < 25:
+                    category = "Normal";
+                    message = "Great! Keep up your healthy habits.";
+                    color = "#58D68D";
+                    break;
+                case bmi < 30:
+                    category = "Overweight";
+                    message = "Consider more physical activity and mindful eating.";
+                    color = "#F5B041";
+                    break;
+                default:
+                    category = "Obese";
+                    message = "We recommend consulting a healthcare provider.";
+                    color = "#EC7063";
+            }
+
+            // Update UI
+            document.getElementById("resultName").innerHTML = "Name: " + name;
+            document.getElementById("resultBMI").innerHTML = bmi.toFixed(1);
+            document.getElementById("resultCategory").innerHTML = category;
+            document.getElementById("resultMessage").innerHTML = message;
+            document.getElementById("results").style.background = color;
+
+            document.getElementById("precheck").style.display = "none";
+            document.getElementById("results").style.display = "block";
+
+            // Send data to Google Sheets Web App
+            fetch('https://script.google.com/macros/s/AKfycbwZIWxxqfUvA1l8VNTcPnJy-h8car5jt0UTn0MCMiyOvSJRrZse7FGuoZlkWc66Nt20/exec', {
+                method: "POST",
+                headers: {
+                    "Content-Type": "text/plain;charset=utf-8" // Bypasses CORS blocks
+                },
+                body: JSON.stringify({
+                    name: name,
+                    age: age,
+                    sex: sex.value,
+                    weight: weight,
+                    height: height,
+                    bmi: bmi.toFixed(1),
+                    category: category
+                })
+            })
+            .then(response => response.text())
+            .then(data => {
+                console.log("Saved to Google Sheets:", data);
+            })
+            .catch(error => {
+                console.error("Error sending data:", error);
+            });
+        });
+
+        function newAssessment() {
+            document.getElementById("bmiForm").reset();
+            document.getElementById("results").style.display = "none";
+            document.getElementById("precheck").style.display = "block";
+        }
+    </script>
+</body>
+</html>
